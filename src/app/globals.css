@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/*
+ * Palette pensata per un locale al buio: fondo profondo, accenti al neon,
+ * testo ad alto contrasto. Il tema è volutamente solo scuro.
+ */
+:root {
+  --background: #08060f;
+  --surface: #14101f;
+  --surface-2: #1d1730;
+  --border: #2e2545;
+  --foreground: #f5f2ff;
+  --muted: #a79dc4;
+  --accent: #ff2d94;
+  --accent-soft: #ff2d9426;
+  --lime: #b8ff2f;
+  --amber: #ffc53d;
+  --danger: #ff5470;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-lime: var(--lime);
+  --color-amber: var(--amber);
+  --color-danger: var(--danger);
+  --color-accent-soft: var(--accent-soft);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background:
+    radial-gradient(1100px 520px at 12% -10%, #ff2d9421, transparent 60%),
+    radial-gradient(900px 480px at 92% 0%, #6b2dff24, transparent 60%),
+    var(--background);
+  background-attachment: fixed;
+  color: var(--foreground);
+}
+
+/* Evita lo zoom automatico di iOS sui campi con testo sotto i 16px. */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+/*
+ * Tailwind v4: le classi condivise sono `@utility` e non `@layer components`,
+ * così le varianti possono comporle con @apply.
+ */
+@utility card {
+  @apply rounded-2xl border border-line bg-surface/80 backdrop-blur-sm;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3
+    text-base font-semibold transition active:scale-[0.98]
+    disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100;
+}
+
+@utility btn-primary {
+  @apply btn bg-accent text-white shadow-lg shadow-accent/30 hover:brightness-110;
+}
+
+@utility btn-ghost {
+  @apply btn border border-line bg-surface-2 text-foreground hover:border-accent/60;
+}
+
+@utility btn-lime {
+  @apply btn bg-lime text-black shadow-lg shadow-lime/20 hover:brightness-110;
+}
+
+@utility chip {
+  @apply inline-flex items-center gap-1.5 rounded-full border border-line
+    bg-surface-2 px-3 py-1 text-xs font-semibold tracking-wide uppercase;
+}
+
+@utility field {
+  @apply w-full rounded-xl border border-line bg-surface-2 px-4 py-3
+    text-foreground placeholder:text-muted/60
+    focus:border-accent focus:ring-2 focus:ring-accent/30 focus:outline-none;
+}
+
+/* Bordo "strappato" dello scontrino, come la carta termica. */
+.receipt-tear {
+  --tooth: 12px;
+  height: var(--tooth);
+  background: var(--surface);
+  mask-image: radial-gradient(
+    var(--tooth) var(--tooth) at 50% 0,
+    transparent 98%,
+    #000 100%
+  );
+  mask-size: calc(var(--tooth) * 2) var(--tooth);
+  mask-repeat: repeat-x;
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent-soft);
+  }
+  70% {
+    box-shadow: 0 0 0 18px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.pulse-ring {
+  animation: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ring {
+    animation: none;
+  }
+}

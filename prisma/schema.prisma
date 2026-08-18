@@ -1,0 +1,86 @@
+// Schema del database di Shots Chupitería.
+// Provider di default: SQLite (zero configurazione, ideale per un singolo locale).
+// Per passare a Postgres vedi la sezione "Deploy" del README.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// Voce del menu esposta ai clienti.
+model Product {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String?
+  priceCents  Int
+  category    String
+  emoji       String?
+  available   Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  orderItems OrderItem[]
+
+  @@index([category, sortOrder])
+}
+
+/// Un ordine pagato online. Diventa lo "scontrino" mostrato al barman.
+model Order {
+  id            String    @id @default(cuid())
+  /// Codice breve leggibile a voce, es. "K4M2-7QX".
+  code          String    @unique
+  /// Progressivo della serata, assegnato solo dopo il pagamento.
+  dailyNumber   Int?
+  /// Giornata commerciale (le ore piccole appartengono alla sera prima).
+  serviceDay    String
+  /// pending | paid | served | cancelled | refunded
+  status        String    @default("pending")
+  customerName  String?
+  note          String?
+  totalCents    Int
+  currency      String    @default("eur")
+  /// Segreto stampato nel QR: senza questo lo scontrino non è verificabile.
+  redeemToken   String
+  /// PaymentIntent Stripe (o riferimento demo).
+  paymentRef    String?   @unique
+  /// apple_pay | google_pay | card | demo
+  paymentMethod String?
+  createdAt     DateTime  @default(now())
+  paidAt        DateTime?
+  servedAt      DateTime?
+  /// Chi ha consegnato: nome/postazione scelto dal barman.
+  servedBy      String?
+
+  items OrderItem[]
+
+  @@index([status, paidAt])
+  @@index([serviceDay, dailyNumber])
+}
+
+/// Riga d'ordine con i valori "congelati" al momento dell'acquisto:
+/// se domani cambia il listino, lo scontrino resta quello pagato.
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String?
+  name      String
+  emoji     String?
+  unitCents Int
+  quantity  Int
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+/// Contatore del progressivo giornaliero, una riga per serata.
+model DailyCounter {
+  serviceDay String @id
+  value      Int    @default(0)
+}
