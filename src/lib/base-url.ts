@@ -1,11 +1,12 @@
+import "server-only";
 import { headers } from "next/headers";
 
 /**
  * URL pubblico dell'app, usato per costruire il link dentro il QR.
- * In produzione dietro proxy conviene fissare NEXT_PUBLIC_APP_URL.
+ * In produzione dietro proxy conviene fissare APP_URL.
  */
 export async function getBaseUrl(): Promise<string> {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const configured = process.env.APP_URL?.trim();
   if (configured) return configured.replace(/\/+$/, "");
 
   const headerList = await headers();

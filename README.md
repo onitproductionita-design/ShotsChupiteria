@@ -76,7 +76,7 @@ modo più rapido per far provare il giro completo al locale.
 
    ```bash
    STRIPE_SECRET_KEY="sk_live_..."
-   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_live_..."
+   STRIPE_PUBLISHABLE_KEY="pk_live_..."
    ```
 
 2. **Webhook.** In *Sviluppatori → Webhook* aggiungi l'endpoint
@@ -131,21 +131,88 @@ Per ripartire dal listino di esempio: `npm run db:seed`.
 
 ## Deploy
 
-L'app è un normale progetto Next.js.
+Nel repo c'è un `Dockerfile` multi-stage e un `railway.json` già pronti.
+
+### Railway (consigliato)
+
+SQLite su volume: nessun database esterno da pagare o configurare.
+
+1. **Nuovo progetto → Deploy from GitHub repo**, scegli questo repository.
+   Railway legge `railway.json` e costruisce con il `Dockerfile`.
+
+2. **Aggiungi un volume** montato su **`/data`**. È il passaggio da non
+   saltare: senza volume il database viene ricreato a ogni deploy e gli
+   ordini della serata spariscono.
+
+3. **Variabili d'ambiente** del servizio:
+
+   ```bash
+   DATABASE_URL=file:/data/shots.db
+   APP_SECRET=<openssl rand -base64 32>
+   STAFF_PIN=<PIN del bancone>
+   ADMIN_PIN=<PIN della gestione, diverso dal precedente>
+   VENUE_NAME=Nome del locale
+   APP_URL=https://<il-tuo-dominio>       # finisce dentro il QR
+   STRIPE_SECRET_KEY=sk_live_...
+   STRIPE_PUBLISHABLE_KEY=pk_live_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   ```
+
+   Tutte si leggono all'avvio: cambiarle e riavviare basta, non serve
+   ricostruire l'immagine. L'unica eccezione è `NEXT_PUBLIC_VENUE_TZ`, che
+   finisce nel bundle del browser e va passata come build arg (il default
+   `Europe/Rome` va bene per l'Italia).
+
+4. **Genera il dominio** da *Settings → Networking*, poi torna su `APP_URL`
+   e mettici quello: se non corrisponde, il QR sullo scontrino punta
+   all'indirizzo sbagliato.
+
+5. Completa la parte Stripe: webhook su `https://<dominio>/api/stripe/webhook`
+   e registrazione del dominio per Apple Pay.
+
+Il container **si rifiuta di partire** se `APP_SECRET` manca o è troppo corta,
+se `DATABASE_URL` non è impostata o se la cartella del database non è
+scrivibile — meglio un deploy fallito con un messaggio chiaro che un'app
+"sana" per l'healthcheck ma rotta su ogni pagina. Avvisa anche, senza
+bloccare, se i PIN sono ancora quelli di default.
+
+Il primo avvio parte con il **menu vuoto**: apri `/admin` e inserisci i drink
+del locale. Il listino di esempio (`npm run db:seed`) è solo per lo sviluppo.
+
+> **Una sola istanza.** `railway.json` fissa `numReplicas: 1`. Con SQLite due
+> repliche scriverebbero su copie diverse dello stesso database. Se un giorno
+> servono più istanze, prima si passa a Postgres.
+
+### Docker, ovunque
 
 ```bash
-npm run build
-npm run start
+docker build -t shots-chupiteria .
+docker run -d --name shots -p 3000:3000 \
+  -v shots-data:/data \
+  -e APP_SECRET="$(openssl rand -base64 32)" \
+  -e STAFF_PIN=... -e ADMIN_PIN=... \
+  -e APP_URL=https://ordina.iltuolocale.it \
+  -e STRIPE_SECRET_KEY=... -e STRIPE_PUBLISHABLE_KEY=... -e STRIPE_WEBHOOK_SECRET=... \
+  shots-chupiteria
 ```
 
-Variabili obbligatorie in produzione: `APP_SECRET`, `STAFF_PIN`, `ADMIN_PIN`,
-`DATABASE_URL`, `NEXT_PUBLIC_APP_URL` e le tre chiavi Stripe.
+Le migrazioni vengono applicate dall'entrypoint a ogni avvio, quindi un
+aggiornamento è `docker build` + `docker run`. Il container gira come root
+perché i volumi di Railway sono montati con proprietà root; se lo ospiti su
+una macchina tua puoi dare i permessi sulla cartella dei dati e aggiungere
+`USER node` al `Dockerfile`.
+
+### Senza container
+
+```bash
+npm ci && npm run build && npm run db:migrate && npm run start
+```
 
 ### SQLite o Postgres?
 
 Il default è **SQLite** su file: per un singolo locale è più che sufficiente e
-non richiede alcun servizio esterno. Serve però un disco persistente — quindi
-un VPS, Fly.io con volume, Railway, un Raspberry nel retrobottega. Su piattaforme
+non richiede alcun servizio esterno. Serve però un disco persistente — il volume
+di Railway, Fly.io, un VPS, un Raspberry nel retrobottega. Su piattaforme
 serverless (Vercel) il filesystem è effimero: lì serve Postgres.
 
 Per passare a **Postgres**:
@@ -156,6 +223,8 @@ Per passare a **Postgres**:
    `PrismaPg` (`new PrismaPg({ connectionString: process.env.DATABASE_URL })`)
 4. in `next.config.ts`: aggiorna `serverExternalPackages`
 5. `DATABASE_URL="postgresql://..."` e `npx prisma migrate dev --name init-postgres`
+
+Da lì il volume non serve più e `numReplicas` può crescere.
 
 ---
 
@@ -180,7 +249,11 @@ src/app/bar/coda/page.tsx            coda live del bancone
 src/app/bar/ritiro/page.tsx          scanner QR e conferma consegna
 src/app/admin/page.tsx               gestione menu, prezzi e modalità
 src/app/admin/actions.ts             server action del pannello
-src/app/api/…                        API di ordini, staff e webhook Stripe
+src/app/api/…                        API di ordini, staff, health e webhook Stripe
+
+Dockerfile                  immagine di produzione multi-stage
+docker-entrypoint.sh        controlli di configurazione, migrazioni, avvio
+railway.json                build da Dockerfile, healthcheck, replica singola
 ```
 
 ---

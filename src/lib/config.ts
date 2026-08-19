@@ -1,3 +1,8 @@
+// Marcatore esplicito: se un componente client importasse questo modulo,
+// le variabili senza prefisso NEXT_PUBLIC_ sarebbero vuote e il bug si
+// noterebbe solo in produzione. Così invece la build fallisce subito.
+import "server-only";
+
 /** Configurazione runtime letta dalle variabili d'ambiente. */
 
 const isProd = process.env.NODE_ENV === "production";
@@ -30,7 +35,7 @@ export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY?.trim() || "";
 export const STRIPE_WEBHOOK_SECRET =
   process.env.STRIPE_WEBHOOK_SECRET?.trim() || "";
 export const STRIPE_PUBLISHABLE_KEY =
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() || "";
+  process.env.STRIPE_PUBLISHABLE_KEY?.trim() || "";
 
 /**
  * Senza chiavi Stripe l'app resta usabile: il pagamento viene simulato.
