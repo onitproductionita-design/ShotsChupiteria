@@ -8,15 +8,18 @@ import { formatCents } from "@/lib/money";
 import { paymentMethodLabel } from "@/lib/payment-label";
 import OrderLines from "@/components/OrderLines";
 import { formatClock } from "@/lib/time";
+import type { ReceiptMode } from "@/lib/settings";
 
 export default function ReceiptClient({
   order: initialOrder,
   qrSvg,
   venueName,
+  mode,
 }: {
   order: OrderDTO;
   qrSvg: string | null;
   venueName: string;
+  mode: ReceiptMode;
 }) {
   const router = useRouter();
   const [polled, setPolled] = useState<OrderDTO | null>(null);
@@ -33,6 +36,9 @@ export default function ReceiptClient({
   // stesso istante in cui il barman preme il pulsante.
   useEffect(() => {
     if (order.status === "served" || order.status === "cancelled") return;
+    // In modalità solo scontrino, dopo il pagamento non cambia più nulla:
+    // tenere aperto il polling scaricherebbe solo la batteria.
+    if (mode === "receipt" && order.status === "paid") return;
 
     let cancelled = false;
     const interval = setInterval(async () => {
@@ -56,7 +62,7 @@ export default function ReceiptClient({
       cancelled = true;
       clearInterval(interval);
     };
-  }, [order.code, order.status, router]);
+  }, [order.code, order.status, mode, router]);
 
   // Lo schermo non deve spegnersi mentre si è in fila con lo scontrino aperto.
   useEffect(() => {
@@ -92,7 +98,7 @@ export default function ReceiptClient({
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 pt-6 pb-12">
-      <StatusBanner status={order.status} />
+      <StatusBanner status={order.status} mode={mode} />
 
       <article className="mt-4 overflow-hidden rounded-2xl bg-surface shadow-2xl">
         <div className="receipt-tear" />
@@ -144,7 +150,9 @@ export default function ReceiptClient({
         <div className="px-6 py-6">
           {isPending && <WaitingForPayment />}
 
-          {isPaid && qrSvg && (
+          {isPaid && mode === "receipt" && <PaidSeal code={order.code} />}
+
+          {isPaid && mode === "qr" && qrSvg && (
             <div className="flex flex-col items-center gap-4">
               <p className="text-center text-sm font-semibold">
                 Mostra questo QR al barman
@@ -191,8 +199,7 @@ export default function ReceiptClient({
       </article>
 
       <p className="mt-6 text-center text-xs text-muted">
-        Codice ordine <span className="font-mono">{order.code}</span> · aggiungi
-        questa pagina ai preferiti per ritrovarla
+        Aggiungi questa pagina ai preferiti per ritrovarla
       </p>
 
       <div className="mt-6 flex justify-center">
@@ -216,14 +223,43 @@ function statusRank(status: OrderDTO["status"]): number {
   }
 }
 
-function StatusBanner({ status }: { status: OrderDTO["status"] }) {
+/** Modalità "solo scontrino": nessun QR, il barman guarda e versa. */
+function PaidSeal({ code }: { code: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-2 text-center">
+      <span
+        aria-hidden
+        className="pulse-ring flex h-24 w-24 items-center justify-center rounded-full border-2 border-lime text-5xl"
+      >
+        ✓
+      </span>
+      <p className="text-xl font-black text-lime">Pagato</p>
+      <p className="text-sm font-semibold">Mostra questo scontrino al barman</p>
+      <div>
+        <p className="text-xs tracking-widest text-muted uppercase">Codice</p>
+        <p className="font-mono text-2xl font-black tracking-widest">{code}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatusBanner({
+  status,
+  mode,
+}: {
+  status: OrderDTO["status"];
+  mode: ReceiptMode;
+}) {
   const config: Record<string, { text: string; className: string }> = {
     pending: {
       text: "In attesa del pagamento",
       className: "border-amber/50 bg-amber/10 text-amber",
     },
     paid: {
-      text: "Pagato · pronto da ritirare",
+      text:
+        mode === "qr"
+          ? "Pagato · pronto da ritirare"
+          : "Pagato · mostra lo scontrino al bancone",
       className: "border-lime/50 bg-lime/10 text-lime",
     },
     served: {

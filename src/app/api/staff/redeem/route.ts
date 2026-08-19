@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { redeemOrder } from "@/lib/orders";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { isStaffAuthenticated } from "@/lib/session";
+import { isStaffAreaDisabled } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,13 @@ const MESSAGES: Record<string, string> = {
 
 /** Timbra lo scontrino come consegnato. Una volta sola, per sempre. */
 export async function POST(request: Request) {
+  if (await isStaffAreaDisabled()) {
+    return NextResponse.json(
+      { error: "Modalità solo scontrino attiva: la validazione è disattivata." },
+      { status: 409 },
+    );
+  }
+
   if (!(await isStaffAuthenticated())) {
     return NextResponse.json({ error: "Non autorizzato." }, { status: 401 });
   }

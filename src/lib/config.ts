@@ -16,6 +16,16 @@ export const SERVICE_DAY_START_HOUR = Number(
 /** PIN che i barman digitano per entrare nell'area staff. */
 export const STAFF_PIN = process.env.STAFF_PIN?.trim() || "1234";
 
+/**
+ * PIN del pannello di gestione (menu, prezzi, impostazioni).
+ * Se non è configurato vale quello dello staff: comodo per partire, ma
+ * significa che ogni barman può cambiare i prezzi. Il pannello lo segnala.
+ */
+export const ADMIN_PIN = process.env.ADMIN_PIN?.trim() || STAFF_PIN;
+
+/** Vero quando admin e staff condividono lo stesso PIN. */
+export const ADMIN_PIN_IS_SHARED = !process.env.ADMIN_PIN?.trim();
+
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY?.trim() || "";
 export const STRIPE_WEBHOOK_SECRET =
   process.env.STRIPE_WEBHOOK_SECRET?.trim() || "";

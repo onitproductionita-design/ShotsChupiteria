@@ -7,6 +7,16 @@ barman lo inquadra (o legge il codice), preme **OK** e lo scontrino viene
 
 Niente coda alla cassa, niente resto, niente scontrini di carta.
 
+Il locale sceglie dal pannello di gestione **come** funziona il ritiro:
+
+| Modalità | Cosa vede il cliente | Cosa fa il barman |
+| --- | --- | --- |
+| **Scontrino con QR** (default) | scontrino con QR e codice | inquadra, controlla, preme OK — lo scontrino si archivia |
+| **Solo scontrino** | scontrino con il bollo «Pagato» | guarda e versa: niente app, niente scansione |
+
+La prima protegge dal riutilizzo, la seconda si adotta in cinque minuti senza
+chiedere niente al personale.
+
 ---
 
 ## Come funziona
@@ -28,7 +38,7 @@ CLIENTE                                   BARMAN
 Lo scontrino del cliente si aggiorna da solo: nel momento in cui il barman
 conferma, sullo schermo compare «Ritirato» e il QR sparisce.
 
-### Perché non si può usare due volte
+### Perché non si può usare due volte (modalità con QR)
 
 * Il QR contiene un **token segreto** generato per quel singolo ordine: uno
   screenshot di un altro scontrino non passa la verifica.
@@ -51,6 +61,7 @@ npm run dev
 
 * Cliente → <http://localhost:3000>
 * Staff → <http://localhost:3000/bar> (PIN: quello in `STAFF_PIN`, default `1234`)
+* Gestione → <http://localhost:3000/admin> (PIN: quello in `ADMIN_PIN`)
 
 Senza chiavi Stripe l'app parte in **modalità demo**: il flusso è completo,
 compare un pulsante «Simula pagamento» e nessun importo viene addebitato. È il
@@ -92,22 +103,31 @@ modo più rapido per far provare il giro completo al locale.
 
 ---
 
-## Gestire il menu
+## Il pannello di gestione
 
-Il listino sta nella tabella `Product`. Per modificarlo:
+Tutto quello che cambia nel tempo si tocca da **`/admin`**, senza rideploy e senza
+database a vista: prezzi, disponibilità, nuovi drink e modalità di ritiro.
 
-```bash
-npm run db:studio        # interfaccia grafica sul database
+```
+/admin   →  PIN gestione (ADMIN_PIN)
 ```
 
-Metti `available = false` per togliere un drink dal menu a metà serata: sparisce
-dal listino ma resta corretto negli scontrini già pagati (nome e prezzo vengono
-**congelati** al momento dell'acquisto).
+**Menu e prezzi.** Ogni voce si modifica in linea: emoji, nome, descrizione,
+prezzo, categoria, ordine di apparizione e la spunta **«In menu stasera»** — che
+è il modo giusto per esaurire un drink a metà serata: sparisce dal menu ma resta
+corretto negli scontrini già pagati, perché nome e prezzo vengono **congelati**
+al momento dell'acquisto. Cambiare un prezzo non tocca nessun ordine esistente.
 
-Per cambiare il listino di partenza, modifica `prisma/seed.ts` e rilancia
-`npm run db:seed`.
+**Modalità di ritiro.** Il selettore in cima decide fra le due modalità della
+tabella qui sopra. In «solo scontrino» il QR sparisce dallo scontrino, l'area
+barman viene disattivata e anche l'API di validazione risponde di no: non resta
+una porta di servizio aperta.
 
----
+> **Attenzione al PIN.** Se `ADMIN_PIN` non è configurato vale `STAFF_PIN`, cioè
+> ogni barman può cambiare i prezzi. Il pannello lo segnala in cima finché non
+> imposti due PIN distinti.
+
+Per ripartire dal listino di esempio: `npm run db:seed`.
 
 ## Deploy
 
@@ -118,8 +138,8 @@ npm run build
 npm run start
 ```
 
-Variabili obbligatorie in produzione: `APP_SECRET`, `STAFF_PIN`, `DATABASE_URL`,
-`NEXT_PUBLIC_APP_URL` e le tre chiavi Stripe.
+Variabili obbligatorie in produzione: `APP_SECRET`, `STAFF_PIN`, `ADMIN_PIN`,
+`DATABASE_URL`, `NEXT_PUBLIC_APP_URL` e le tre chiavi Stripe.
 
 ### SQLite o Postgres?
 
@@ -142,12 +162,13 @@ Per passare a **Postgres**:
 ## Struttura
 
 ```
-prisma/schema.prisma        modello dati (Product, Order, OrderItem, DailyCounter)
+prisma/schema.prisma        modello dati (Product, Order, OrderItem, DailyCounter, Setting)
 prisma/seed.ts              listino di esempio
 
 src/lib/orders.ts           creazione ordine, pagamento, consegna monouso
 src/lib/payments.ts         PaymentIntent Stripe e riconoscimento wallet
-src/lib/session.ts          sessione staff firmata (cookie httpOnly)
+src/lib/session.ts          sessioni firmate per barman e gestione (cookie distinti)
+src/lib/settings.ts         modalità di ritiro, modificabile a caldo
 src/lib/codes.ts            codici leggibili, token QR, giornata commerciale
 src/lib/qr.ts               generazione del QR come SVG
 
@@ -157,6 +178,8 @@ src/app/scontrino/[code]/page.tsx    lo scontrino digitale
 src/app/bar/page.tsx                 accesso staff con PIN
 src/app/bar/coda/page.tsx            coda live del bancone
 src/app/bar/ritiro/page.tsx          scanner QR e conferma consegna
+src/app/admin/page.tsx               gestione menu, prezzi e modalità
+src/app/admin/actions.ts             server action del pannello
 src/app/api/…                        API di ordini, staff e webhook Stripe
 ```
 
@@ -176,6 +199,8 @@ src/app/api/…                        API di ordini, staff e webhook Stripe
   (Wake Lock), così non deve sbloccare il telefono con le mani occupate.
 * **La coda funziona anche con rete ballerina**: si aggiorna ogni 3 secondi,
   segnala quando è offline e riprova da sola.
+* **Il listino si cambia dal telefono**, in mezzo al servizio: togliere un drink
+  esaurito è una spunta, non un deploy.
 * **I prezzi vengono sempre riletti dal server**: un carrello manomesso dal
   browser non cambia di un centesimo l'importo addebitato.
 
@@ -183,6 +208,9 @@ src/app/api/…                        API di ordini, staff e webhook Stripe
 
 Punti da concordare con il locale, non ancora coperti dal codice:
 
+* **In modalità «solo scontrino» non c'è alcuna protezione dal riutilizzo**: è
+  una scelta consapevole di semplicità, non una dimenticanza. Se il locale ha
+  volumi alti conviene la modalità con QR.
 * **Rimborsi e annullamenti** dal pannello staff (oggi si passa da Stripe; il
   webhook `charge.refunded` marca già l'ordine come rimborsato).
 * **Verifica dell'età**: la spunta «ho 18 anni» è dichiarativa. Se servono

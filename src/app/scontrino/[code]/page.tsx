@@ -6,6 +6,7 @@ import { VENUE_NAME } from "@/lib/config";
 import { findOrderByCode, markOrderPaid, toDTO } from "@/lib/orders";
 import { detectPaymentMethod } from "@/lib/payments";
 import { buildRedeemUrl, renderQrSvg } from "@/lib/qr";
+import { getReceiptMode } from "@/lib/settings";
 import { getStripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -54,15 +55,22 @@ export default async function ReceiptPage({
     }
   }
 
-  // Il QR esiste solo mentre lo scontrino è spendibile.
+  // Il QR esiste solo mentre lo scontrino è spendibile, e solo nella
+  // modalità in cui il bancone lo valida davvero.
+  const mode = await getReceiptMode();
   const qrSvg =
-    order.status === "paid"
+    mode === "qr" && order.status === "paid"
       ? await renderQrSvg(
           buildRedeemUrl(await getBaseUrl(), order.code, order.redeemToken),
         )
       : null;
 
   return (
-    <ReceiptClient order={toDTO(order)} qrSvg={qrSvg} venueName={VENUE_NAME} />
+    <ReceiptClient
+      order={toDTO(order)}
+      qrSvg={qrSvg}
+      venueName={VENUE_NAME}
+      mode={mode}
+    />
   );
 }

@@ -84,3 +84,10 @@ model DailyCounter {
   serviceDay String @id
   value      Int    @default(0)
 }
+
+/// Impostazioni modificabili dal pannello di gestione, senza rideploy.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

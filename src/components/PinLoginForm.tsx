@@ -3,7 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function StaffLoginForm({ next }: { next: string }) {
+/** Accesso con PIN, usato sia dal bancone sia dal pannello di gestione. */
+export default function PinLoginForm({
+  endpoint,
+  next,
+  label = "PIN staff",
+}: {
+  endpoint: string;
+  next: string;
+  label?: string;
+}) {
   const router = useRouter();
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +23,7 @@ export default function StaffLoginForm({ next }: { next: string }) {
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/staff/login", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pin }),
@@ -36,7 +45,7 @@ export default function StaffLoginForm({ next }: { next: string }) {
     <form onSubmit={submit} className="card flex flex-col gap-4 p-6">
       <label>
         <span className="mb-2 block text-xs font-semibold text-muted uppercase">
-          PIN staff
+          {label}
         </span>
         <input
           className="field text-center font-mono text-3xl tracking-[0.5em]"
@@ -44,10 +53,11 @@ export default function StaffLoginForm({ next }: { next: string }) {
           onChange={(event) => setPin(event.target.value)}
           // Tastierino numerico sui telefoni, senza autocorrezione.
           inputMode="numeric"
+          type="password"
           autoComplete="off"
           autoFocus
           maxLength={12}
-          aria-label="PIN staff"
+          aria-label={label}
         />
       </label>
 

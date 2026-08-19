@@ -1,13 +1,17 @@
 import { redirect } from "next/navigation";
-import StaffLoginForm from "@/components/StaffLoginForm";
+import PinLoginForm from "@/components/PinLoginForm";
+import StaffAreaDisabled from "@/components/StaffAreaDisabled";
 import { VENUE_NAME } from "@/lib/config";
 import { isStaffAuthenticated } from "@/lib/session";
+import { isStaffAreaDisabled } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { robots: { index: false, follow: false } };
 
 export default async function StaffLoginPage({ searchParams }: PageProps<"/bar">) {
+  if (await isStaffAreaDisabled()) return <StaffAreaDisabled venueName={VENUE_NAME} />;
+
   const { next } = await searchParams;
   // Solo percorsi interni: evita che il parametro diventi un open redirect.
   const rawNext = Array.isArray(next) ? next[0] : next;
@@ -27,7 +31,7 @@ export default async function StaffLoginPage({ searchParams }: PageProps<"/bar">
           Inserisci il PIN del bancone per aprire la coda ordini.
         </p>
       </div>
-      <StaffLoginForm next={destination} />
+      <PinLoginForm endpoint="/api/staff/login" next={destination} />
     </main>
   );
 }

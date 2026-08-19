@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCents } from "@/lib/money";
+import type { ReceiptMode } from "@/lib/settings";
 
 export type MenuProduct = {
   id: string;
@@ -22,14 +23,21 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const CART_STORAGE_KEY = "sc_cart_v1";
 
+/** Etichetta di ripiego per le categorie aggiunte dalla gestione. */
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 export default function MenuClient({
   products,
   venueName,
   demo,
+  mode,
 }: {
   products: MenuProduct[];
   venueName: string;
   demo: boolean;
+  mode: ReceiptMode;
 }) {
   const router = useRouter();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -133,8 +141,10 @@ export default function MenuClient({
         <p className="chip border-accent/40 text-accent">Ordina · Paga · Ritira</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight">{venueName}</h1>
         <p className="mt-1 text-sm text-muted">
-          Scegli i tuoi drink, paga dal telefono e salta la fila. Al bancone mostri
-          lo scontrino, il barman lo timbra e via.
+          Scegli i tuoi drink, paga dal telefono e salta la fila.{" "}
+          {mode === "qr"
+            ? "Al bancone mostri il QR, il barman lo timbra e via."
+            : "Al bancone mostri lo scontrino e ritiri."}
         </p>
         {demo && (
           <p className="mt-3 rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
@@ -158,7 +168,7 @@ export default function MenuClient({
             >
               {category === "tutti"
                 ? "Tutti"
-                : (CATEGORY_LABELS[category] ?? category)}
+                : (CATEGORY_LABELS[category] ?? capitalize(category))}
             </button>
           ))}
         </div>

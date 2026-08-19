@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import RedeemClient from "@/components/RedeemClient";
+import StaffAreaDisabled from "@/components/StaffAreaDisabled";
 import StaffBar from "@/components/StaffBar";
 import { VENUE_NAME } from "@/lib/config";
 import { isStaffAuthenticated } from "@/lib/session";
+import { isStaffAreaDisabled } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,8 @@ export const metadata = { robots: { index: false, follow: false } };
 export default async function RedeemPage({
   searchParams,
 }: PageProps<"/bar/ritiro">) {
+  if (await isStaffAreaDisabled()) return <StaffAreaDisabled venueName={VENUE_NAME} />;
+
   const { c, t } = await searchParams;
   const code = first(c);
   const token = first(t);
