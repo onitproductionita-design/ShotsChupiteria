@@ -129,6 +129,32 @@ una porta di servizio aperta.
 
 Per ripartire dal listino di esempio: `npm run db:seed`.
 
+---
+
+## Demo statica (per far vedere l'idea)
+
+`docs/index.html` è una pagina **finta e autonoma**: due telefoni affiancati,
+quello del cliente e quello del barman, e il giro completo — ordina, paga,
+scontrino, il barman timbra, prova a riusarlo e viene respinto.
+
+Gira tutta nel browser: nessun server, nessun pagamento, nessun database. Serve
+a far capire l'idea al locale in trenta secondi, prima di mettere in piedi
+qualsiasi cosa.
+
+Per pubblicarla gratis su **GitHub Pages**: *Settings → Pages → Source: Deploy
+from a branch*, poi scegli il branch e la cartella **`/docs`**. Il link è pronto
+in un paio di minuti. Pages legge solo la radice o `/docs`, per questo la demo
+sta lì e non in una cartella dal nome più bello; e se il repository è privato
+serve un piano GitHub a pagamento.
+
+Puoi anche aprirla in locale con un doppio clic sul file, o servirla con
+`python3 -m http.server` dalla cartella `docs`.
+
+> La pagina dice a chiare lettere «Demo · nessun pagamento reale».
+> Lasciacelo: evita che qualcuno la scambi per il servizio attivo.
+
+---
+
 ## Deploy
 
 Nel repo c'è un `Dockerfile` multi-stage e un `railway.json` già pronti.
@@ -251,6 +277,7 @@ src/app/admin/page.tsx               gestione menu, prezzi e modalità
 src/app/admin/actions.ts             server action del pannello
 src/app/api/…                        API di ordini, staff, health e webhook Stripe
 
+docs/index.html             demo statica autonoma, per GitHub Pages
 Dockerfile                  immagine di produzione multi-stage
 docker-entrypoint.sh        controlli di configurazione, migrazioni, avvio
 railway.json                build da Dockerfile, healthcheck, replica singola

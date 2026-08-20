@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ordina allo Shots</title>
+<meta name="description" content="Demo interattiva: il cliente ordina e paga dal telefono, il barman timbra lo scontrino e non è più riutilizzabile.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700;900&family=Geist+Mono:wght@400;700&display=swap">
+<style>
+/*
+  Demo statica: stessa identità visiva dell'app vera (stessi token di
+  globals.css), così quello che il locale vede qui è quello che avrà.
+  Tema unico scuro, come il prodotto: si usa al buio, in un locale.
+*/
+:root {
+  --ground: #08060f;
+  --surface: #14101f;
+  --raised: #1d1730;
+  --line: #2e2545;
+  --ink: #f5f2ff;
+  --muted: #a79dc4;
+  --accent: #ff2d94;
+  --lime: #b8ff2f;
+  --amber: #ffc53d;
+  --radius: 16px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1100px 520px at 12% -8%, #ff2d9421, transparent 60%),
+    radial-gradient(900px 480px at 92% 0%, #6b2dff24, transparent 60%),
+    var(--ground);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 40px 20px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+/* ── Intestazione ─────────────────────────────────────────────── */
+.intro { display: flex; flex-direction: column; gap: 14px; max-width: 62ch; }
+
+.eyebrow {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #ffc53d66;
+  background: #ffc53d14;
+  color: var(--amber);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.lede { margin: 0; color: var(--muted); font-size: 1.05rem; }
+.lede strong { color: var(--ink); font-weight: 600; }
+
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.steps li { display: flex; align-items: baseline; gap: 8px; }
+.steps b {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+
+/* ── Palco con i due telefoni ─────────────────────────────────── */
+.stage {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 28px;
+  align-items: start;
+}
+
+.pane { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+.pane-label { display: flex; align-items: baseline; gap: 10px; padding-left: 4px; }
+.pane-label h2 { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+.pane-label span { font-size: 0.82rem; color: var(--muted); }
+
+.phone {
+  border: 1px solid var(--line);
+  border-radius: 34px;
+  background: var(--ground);
+  padding: 10px;
+  box-shadow: 0 26px 60px -30px #000, inset 0 1px 0 #ffffff0d;
+}
+
+.screen {
+  height: 616px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 26px;
+  background: linear-gradient(180deg, #17122622, transparent 240px), var(--ground);
+  padding: 18px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* ── Elementi comuni ──────────────────────────────────────────── */
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #14101fcc;
+  padding: 14px;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 0;
+  border-radius: 12px;
+  transition: filter 0.15s, transform 0.08s, border-color 0.15s;
+}
+button:active { transform: scale(0.985); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.btn {
+  width: 100%;
+  padding: 14px 18px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+.btn-accent { background: var(--accent); color: #fff; box-shadow: 0 10px 26px -12px var(--accent); }
+.btn-lime { background: var(--lime); color: #0b0b0b; box-shadow: 0 10px 26px -12px var(--lime); }
+.btn-ghost { background: var(--raised); color: var(--ink); border: 1px solid var(--line); }
+.btn:hover { filter: brightness(1.08); }
+
+.screen-head { display: flex; flex-direction: column; gap: 2px; }
+.screen-head .venue {
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+.screen-head .title { font-size: 1.3rem; font-weight: 900; letter-spacing: -0.02em; }
+.screen-head .sub { font-size: 0.82rem; color: var(--muted); }
+
+/* ── Menu ─────────────────────────────────────────────────────── */
+.menu { display: flex; flex-direction: column; gap: 9px; }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #14101fcc;
+  padding: 11px 12px;
+  transition: border-color 0.15s;
+}
+.row.picked { border-color: #ff2d9499; background: #ff2d940f; }
+.row .emoji { font-size: 1.6rem; line-height: 1; }
+.row .info { flex: 1; min-width: 0; }
+.row .name { font-weight: 700; font-size: 0.95rem; }
+.row .desc {
+  font-size: 0.74rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row .price {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--lime);
+  font-variant-numeric: tabular-nums;
+}
+
+.add {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid #ff2d9499;
+  background: #ff2d941f;
+  border-radius: 999px;
+  padding: 3px;
+}
+.stepper button {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.stepper .qty {
+  min-width: 22px;
+  text-align: center;
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px 2px;
+  background: linear-gradient(180deg, transparent, var(--ground) 34%);
+}
+.bar .sum { flex: 1; }
+.bar .count { font-size: 0.72rem; color: var(--muted); }
+.bar .total {
+  font-size: 1.4rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.bar .btn { width: auto; flex: 1; }
+
+/* ── Pagamento ────────────────────────────────────────────────── */
+.wallet {
+  width: 100%;
+  padding: 15px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+.wallet-apple { background: #fff; color: #000; }
+.wallet-google { background: #fff; color: #3c4043; }
+.wallet-card { background: var(--raised); color: var(--ink); border: 1px solid var(--line); }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.lines { display: flex; flex-direction: column; gap: 7px; }
+.line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+.line .qty {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-weight: 700;
+  color: var(--accent);
+  margin-right: 6px;
+}
+.line .amt {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.totalrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-top: 1px solid var(--line);
+  padding-top: 11px;
+  margin-top: 3px;
+}
+.totalrow .k { font-size: 0.82rem; color: var(--muted); }
+.totalrow .v { font-size: 1.35rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+
+.spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.center { text-align: center; }
+.muted { color: var(--muted); font-size: 0.82rem; }
+
+/* ── Scontrino ────────────────────────────────────────────────── */
+.banner {
+  border-radius: 12px;
+  border: 1px solid;
+  padding: 11px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.87rem;
+}
+.banner-ok { border-color: #b8ff2f80; background: #b8ff2f14; color: var(--lime); }
+.banner-done { border-color: var(--line); background: var(--raised); color: var(--muted); }
+
+.receipt {
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.receipt-body { padding: 18px 16px; }
+.tear {
+  height: 10px;
+  background: var(--surface);
+  --m: radial-gradient(10px 10px at 50% 0, transparent 98%, #000 100%);
+  -webkit-mask-image: var(--m);
+  mask-image: var(--m);
+  -webkit-mask-size: 20px 10px;
+  mask-size: 20px 10px;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+}
+.tear.bottom { transform: rotate(180deg); }
+
+.ticket-num {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 3.6rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--lime);
+  font-variant-numeric: tabular-nums;
+}
+.ticket-num.spent { color: var(--muted); text-decoration: line-through; }
+
+.dashed { border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); }
+
+.qr {
+  width: 176px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+}
+.qr svg { display: block; width: 100%; height: auto; }
+
+.code {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.stamp { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 10px 0; }
+.stamp .mark {
+  width: 76px;
+  height: 76px;
+  border-radius: 999px;
+  border: 2px solid var(--lime);
+  display: grid;
+  place-items: center;
+  font-size: 2.1rem;
+  color: var(--lime);
+  animation: pop 0.42s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes pop { from { transform: scale(0.4); opacity: 0; } }
+
+/* ── Bancone ──────────────────────────────────────────────────── */
+.queue-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 11px;
+}
+.pill {
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 4px 11px;
+}
+.pill.quiet { background: var(--raised); color: var(--muted); }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  color: var(--muted);
+  padding: 30px 16px;
+}
+.empty .big { font-size: 2.4rem; opacity: 0.55; }
+
+.order-head { display: flex; align-items: flex-start; gap: 14px; }
+.order-num {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--lime);
+  font-variant-numeric: tabular-nums;
+}
+.order-code {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.alert {
+  border-radius: 12px;
+  border: 1px solid #ff547080;
+  background: #ff547014;
+  color: #ff8095;
+  padding: 11px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: center;
+  animation: shake 0.34s;
+}
+@keyframes shake {
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* ── Nota finale ──────────────────────────────────────────────── */
+.note {
+  border-top: 1px solid var(--line);
+  padding-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 22px;
+  font-size: 0.88rem;
+  color: var(--muted);
+  max-width: 100%;
+}
+.note h3 {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.note p { margin: 0 0 8px; }
+.note b { color: var(--ink); font-weight: 600; }
+
+.reset {
+  align-self: flex-start;
+  padding: 10px 18px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  background: var(--raised);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="intro">
+    <p class="eyebrow">Demo · nessun pagamento reale</p>
+    <h1>Il drink si ordina dal telefono, la fila sparisce</h1>
+    <p class="lede">
+      Il cliente sceglie e paga mentre è ancora in pista. Al bancone mostra uno
+      <strong>scontrino digitale</strong>: il barman lo timbra e da quel momento
+      <strong>non è più utilizzabile</strong>.
+    </p>
+    <ul class="steps">
+      <li><b>01</b> Ordina e paga a sinistra</li>
+      <li><b>02</b> Timbra lo scontrino a destra</li>
+      <li><b>03</b> Prova a riusarlo</li>
+    </ul>
+  </header>
+
+  <main class="stage">
+    <section class="pane">
+      <div class="pane-label">
+        <h2>Il telefono del cliente</h2>
+        <span>in fila, o al tavolo</span>
+      </div>
+      <div class="phone">
+        <div class="screen" id="cliente"></div>
+      </div>
+    </section>
+
+    <section class="pane">
+      <div class="pane-label">
+        <h2>Il telefono del barman</h2>
+        <span>dietro al bancone</span>
+      </div>
+      <div class="phone">
+        <div class="screen" id="barman"></div>
+      </div>
+    </section>
+  </main>
+
+  <button class="reset" type="button" id="reset">Ricomincia la demo</button>
+
+  <footer class="note">
+    <div>
+      <h3>Cosa è finto qui</h3>
+      <p>
+        Questa pagina gira <b>tutta dentro il browser</b>: nessun pagamento
+        parte, nessun ordine viene salvato, e il QR non porta da nessuna parte.
+        Ricaricando riparte da zero.
+      </p>
+    </div>
+    <div>
+      <h3>Cosa fa l'app vera</h3>
+      <p>
+        Incassa con <b>Apple Pay, Google Pay o carta</b> tramite Stripe, tiene la
+        coda del bancone aggiornata su più telefoni e garantisce che ogni
+        scontrino valga <b>una volta sola</b>, anche se due barman premono OK
+        nello stesso istante.
+      </p>
+      <p>
+        Il locale gestisce menu e prezzi da un pannello suo, e può scegliere se
+        far validare gli scontrini col QR o mostrarli e basta.
+      </p>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+
+const MENU = [
+  { id: "tequila", emoji: "🌵", name: "Tequila Bum Bum", desc: "Tequila, sprite, botta sul bancone", price: 300 },
+  { id: "b52", emoji: "🔥", name: "B-52", desc: "Kahlúa, Baileys, triple sec", price: 350 },
+  { id: "kamikaze", emoji: "💥", name: "Kamikaze", desc: "Vodka, triple sec, lime", price: 300 },
+  { id: "guinness", emoji: "🍺", name: "Baby Guinness", desc: "Kahlúa con schiuma di Baileys", price: 350 },
+  { id: "spritz", emoji: "🍊", name: "Spritz", desc: "Aperol, prosecco, soda", price: 600 },
+  { id: "mojito", emoji: "🌿", name: "Mojito", desc: "Rum, lime, menta, zucchero di canna", price: 700 }
+];
+
+const ORDER_CODE = "K4M-7QX";
+const ORDER_NUMBER = 42;
+
+const euro = (cents) =>
+  new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(cents / 100);
+
+const clock = (date) =>
+  new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" }).format(date);
+
+const escape = (value) =>
+  String(value).replace(/[&<>"]/g, (ch) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+
+let state;
+
+function reset() {
+  state = { view: "menu", cart: {}, order: null, armed: false, rejected: false };
+  render();
+}
+
+const lines = () =>
+  MENU.filter((item) => state.cart[item.id] > 0)
+    .map((item) => ({ ...item, qty: state.cart[item.id] }));
+
+const total = () => lines().reduce((sum, line) => sum + line.price * line.qty, 0);
+const count = () => lines().reduce((sum, line) => sum + line.qty, 0);
+
+/* ── Schermo del cliente ─────────────────────────────────────── */
+
+function clienteHtml() {
+  if (state.view === "menu") return menuHtml();
+  if (state.view === "pay") return payHtml();
+  if (state.view === "paying") return payingHtml();
+  return receiptHtml();
+}
+
+function menuHtml() {
+  const rows = MENU.map((item) => {
+    const qty = state.cart[item.id] || 0;
+    const control = qty === 0
+      ? `<button class="add" data-plus="${item.id}" aria-label="Aggiungi ${escape(item.name)}">+</button>`
+      : `<div class="stepper">
+           <button data-minus="${item.id}" aria-label="Togli ${escape(item.name)}">−</button>
+           <span class="qty" aria-live="polite">${qty}</span>
+           <button data-plus="${item.id}" aria-label="Aggiungi ${escape(item.name)}">+</button>
+         </div>`;
+    return `<div class="row${qty ? " picked" : ""}">
+      <span class="emoji" aria-hidden="true">${item.emoji}</span>
+      <div class="info">
+        <div class="name">${escape(item.name)}</div>
+        <div class="desc">${escape(item.desc)}</div>
+        <div class="price">${euro(item.price)}</div>
+      </div>
+      ${control}
+    </div>`;
+  }).join("");
+
+  const bar = count() === 0 ? "" : `<div class="bar">
+    <div class="sum">
+      <div class="count">${count()} drink</div>
+      <div class="total">${euro(total())}</div>
+    </div>
+    <button class="btn btn-accent" data-go="pay">Vai al pagamento</button>
+  </div>`;
+
+  return `<div class="screen-head">
+      <div class="venue">Shots Chupitería</div>
+      <div class="title">Ordina e salta la fila</div>
+      <div class="sub">Paghi qui, ritiri al bancone.</div>
+    </div>
+    <div class="menu">${rows}</div>${bar}`;
+}
+
+function payHtml() {
+  const rows = lines().map((line) =>
+    `<div class="line">
+      <span><span class="qty">${line.qty}×</span>${line.emoji} ${escape(line.name)}</span>
+      <span class="amt">${euro(line.price * line.qty)}</span>
+    </div>`).join("");
+
+  return `<div class="screen-head">
+      <div class="venue">Pagamento</div>
+      <div class="title">Conferma e paga</div>
+    </div>
+    <div class="card">
+      <div class="lines">${rows}</div>
+      <div class="totalrow"><span class="k">Totale</span><span class="v">${euro(total())}</span></div>
+    </div>
+    <button class="wallet wallet-apple" data-go="paying"> Apple Pay</button>
+    <button class="wallet wallet-google" data-go="paying">G Pay</button>
+    <div class="divider">oppure</div>
+    <button class="wallet wallet-card" data-go="paying">Carta di credito</button>
+    <p class="muted center">In demo non viene addebitato nulla.</p>
+    <div class="bar"><button class="btn btn-ghost" data-go="menu">Torna al menu</button></div>`;
+}
+
+function payingHtml() {
+  return `<div class="empty">
+      <div class="spinner" role="status" aria-label="Pagamento in corso"></div>
+      <p class="muted">Confermo il pagamento…</p>
+    </div>`;
+}
+
+function receiptHtml() {
+  const order = state.order;
+  const served = order.status === "served";
+
+  const rows = order.items.map((line) =>
+    `<div class="line" style="font-size:1rem">
+      <span><span class="qty" style="font-size:1.15rem">${line.qty}×</span>${line.emoji} <b>${escape(line.name)}</b></span>
+      <span class="amt">${euro(line.price * line.qty)}</span>
+    </div>`).join("");
+
+  const proof = served
+    ? `<div class="stamp">
+         <div class="mark" aria-hidden="true">✓</div>
+         <div style="font-weight:900;color:var(--lime);font-size:1.15rem">Ritirato</div>
+         <p class="muted center" style="margin:0">Consegnato alle ${clock(order.servedAt)}.<br>Questo scontrino non è più valido.</p>
+       </div>`
+    : `<div style="display:flex;flex-direction:column;gap:12px;align-items:center">
+         <p style="margin:0;font-weight:700;font-size:0.9rem">Mostra questo QR al barman</p>
+         <div class="qr"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h25v25H0z"/><path stroke="#08060f" d="M0 0.5h7m1 0h1m2 0h1m3 0h1m2 0h7M0 1.5h1m5 0h1m1 0h1m2 0h1m1 0h1m4 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m3 0h1m2 0h2m3 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h1m1 0h4m1 0h1m2 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m3 0h1m2 0h2m1 0h1m1 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m3 0h2m4 0h1m1 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M8 7.5h1m2 0h4m1 0h1M0 8.5h1m1 0h2m1 0h3m1 0h1m2 0h1m2 0h1m2 0h1m2 0h1m1 0h2M1 9.5h2m6 0h2m3 0h3m1 0h2m1 0h2M1 10.5h1m3 0h2m2 0h1m1 0h1m2 0h1m6 0h4M0 11.5h1m1 0h3m2 0h2m3 0h1m3 0h2m1 0h4M6 12.5h2m1 0h1m2 0h1m3 0h1m3 0h2M2 13.5h1m2 0h1m3 0h4m1 0h1m4 0h1m1 0h1M1 14.5h1m2 0h1m1 0h1m4 0h1m1 0h1m4 0h2m1 0h4M0 15.5h1m4 0h1m2 0h1m2 0h1m3 0h1m4 0h1m2 0h1M2 16.5h2m1 0h6m1 0h1m1 0h8m2 0h1M8 17.5h1m1 0h1m4 0h2m3 0h1m1 0h1M0 18.5h7m1 0h1m4 0h4m1 0h1m1 0h1m2 0h1M0 19.5h1m5 0h1m1 0h2m1 0h1m1 0h2m1 0h1m3 0h2m1 0h2M0 20.5h1m1 0h3m1 0h1m2 0h2m2 0h2m1 0h5m2 0h2M0 21.5h1m1 0h3m1 0h1m1 0h2m7 0h2m1 0h1m1 0h1m1 0h1M0 22.5h1m1 0h3m1 0h1m1 0h2m4 0h2m2 0h4m1 0h1M0 23.5h1m5 0h1m3 0h5m2 0h1m2 0h3m1 0h1M0 24.5h7m1 0h2m1 0h1m3 0h1m2 0h3m3 0h1"/></svg></div>
+         <div class="center">
+           <div class="muted" style="letter-spacing:0.14em;text-transform:uppercase;font-size:0.68rem">Oppure detta il codice</div>
+           <div class="code">${order.code}</div>
+         </div>
+       </div>`;
+
+  return `<div class="banner ${served ? "banner-done" : "banner-ok"}">
+      ${served ? "Scontrino già utilizzato" : "Pagato · pronto da ritirare"}
+    </div>
+    <div class="receipt">
+      <div class="tear"></div>
+      <div class="receipt-body center">
+        <div class="venue" style="font-size:0.68rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);font-weight:700">Shots Chupitería</div>
+        <div class="muted" style="margin-top:12px;letter-spacing:0.14em;text-transform:uppercase;font-size:0.68rem">Numero ordine</div>
+        <div class="ticket-num${served ? " spent" : ""}">#${String(order.number).padStart(3, "0")}</div>
+      </div>
+      <div class="receipt-body dashed">
+        <div class="lines">${rows}</div>
+        <div class="totalrow"><span class="k">Totale · Apple Pay</span><span class="v">${euro(order.total)}</span></div>
+      </div>
+      <div class="receipt-body">${proof}</div>
+      <div class="tear bottom"></div>
+    </div>`;
+}
+
+/* ── Schermo del barman ──────────────────────────────────────── */
+
+function barmanHtml() {
+  const order = state.order;
+
+  if (!order) {
+    return `<div class="queue-head">
+        <div><div class="title" style="font-size:1.05rem;font-weight:900">Coda del bancone</div></div>
+        <span class="pill quiet">0 in attesa</span>
+      </div>
+      <div class="empty">
+        <div class="big" aria-hidden="true">🍸</div>
+        <p style="margin:0;font-weight:700;color:var(--ink)">Bancone libero</p>
+        <p class="muted" style="margin:0">Gli ordini pagati compaiono qui.</p>
+      </div>`;
+  }
+
+  const served = order.status === "served";
+  const rows = order.items.map((line) =>
+    `<div class="line" style="font-size:1rem">
+      <span><span class="qty" style="font-size:1.15rem;color:var(--lime)">${line.qty}×</span>${line.emoji} <b>${escape(line.name)}</b></span>
+    </div>`).join("");
+
+  const action = served
+    ? `${state.rejected ? '<div class="alert">Scontrino già utilizzato alle ' + clock(order.servedAt) + "</div>" : ""}
+       <button class="btn btn-ghost" data-retry="1">Prova a timbrarlo di nuovo</button>`
+    : `<button class="btn ${state.armed ? "btn-accent" : "btn-lime"}" data-serve="1">
+         ${state.armed ? "Tocca ancora per confermare" : "Consegnato ✓"}
+       </button>`;
+
+  return `<div class="queue-head">
+      <div><div class="title" style="font-size:1.05rem;font-weight:900">Coda del bancone</div></div>
+      <span class="pill${served ? " quiet" : ""}">${served ? "0 in attesa" : "1 in attesa"}</span>
+    </div>
+    <div class="card" style="${served ? "opacity:0.62" : ""}">
+      <div class="order-head">
+        <div>
+          <div class="order-num">#${String(order.number).padStart(3, "0")}</div>
+          <div class="order-code">${order.code}</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="lines">${rows}</div>
+        </div>
+      </div>
+      <div class="totalrow"><span class="k">${served ? "Consegnato alle " + clock(order.servedAt) : "Appena pagato"}</span><span class="v" style="font-size:1rem">${euro(order.total)}</span></div>
+    </div>
+    ${action}
+    ${served ? "" : '<p class="muted center">Servono due tocchi: al bancone un tap per sbaglio brucerebbe lo scontrino di un altro cliente.</p>'}`;
+}
+
+/* ── Render e interazioni ────────────────────────────────────── */
+
+const clienteEl = document.getElementById("cliente");
+const barmanEl = document.getElementById("barman");
+
+function render() {
+  clienteEl.innerHTML = clienteHtml();
+  barmanEl.innerHTML = barmanHtml();
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("button");
+  if (!target) return;
+
+  if (target.dataset.plus) {
+    state.cart[target.dataset.plus] = (state.cart[target.dataset.plus] || 0) + 1;
+    return render();
+  }
+
+  if (target.dataset.minus) {
+    const id = target.dataset.minus;
+    state.cart[id] = Math.max(0, (state.cart[id] || 0) - 1);
+    if (!state.cart[id]) delete state.cart[id];
+    return render();
+  }
+
+  if (target.dataset.go === "menu" || target.dataset.go === "pay") {
+    state.view = target.dataset.go;
+    return render();
+  }
+
+  if (target.dataset.go === "paying") {
+    state.view = "paying";
+    render();
+    // Piccola attesa: senza, il pagamento sembra finto anche più di quanto sia.
+    setTimeout(() => {
+      state.order = {
+        number: ORDER_NUMBER,
+        code: ORDER_CODE,
+        items: lines(),
+        total: total(),
+        status: "paid",
+        servedAt: null
+      };
+      state.view = "receipt";
+      render();
+    }, 1100);
+    return;
+  }
+
+  if (target.dataset.serve) {
+    if (!state.armed) {
+      state.armed = true;
+      render();
+      // La conferma si disarma da sola, come nell'app vera.
+      setTimeout(() => {
+        if (state.armed) { state.armed = false; render(); }
+      }, 4000);
+      return;
+    }
+    state.armed = false;
+    state.order.status = "served";
+    state.order.servedAt = new Date();
+    return render();
+  }
+
+  if (target.dataset.retry) {
+    state.rejected = true;
+    render();
+    setTimeout(() => { state.rejected = false; render(); }, 2600);
+    return;
+  }
+
+  if (target.id === "reset") reset();
+});
+
+reset();
+</script>
+</body>
+</html>
