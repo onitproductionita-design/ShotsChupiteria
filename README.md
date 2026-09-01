@@ -1,52 +1,61 @@
 # Shots Chupitería · ordini online e scontrino digitale
 
-Ordini i drink dal telefono mentre sei ancora sulla pista, paghi con **Apple Pay,
-Google Pay o carta**, e ricevi uno **scontrino digitale con QR**. Al bancone il
-barman lo inquadra (o legge il codice), preme **OK** e lo scontrino viene
-**archiviato**: da quel momento non è più spendibile.
+La coda in una chupitería non nasce al bancone: nasce **alla cassa**. Questa app
+la toglie di mezzo. Il cliente ordina dal telefono mentre è ancora in pista,
+paga con **Apple Pay, Google Pay o carta**, e al bancone porge lo schermo: il
+barman legge cosa versare e **sbarra lo scontrino**, che da quel momento non
+vale più.
 
-Niente coda alla cassa, niente resto, niente scontrini di carta.
+Il menu è a **fasce di prezzo** — birra, cocktail, cocktail premium — non a
+singoli drink: si ordina in cinque secondi e il barman resta libero di proporre
+quello che vuole quando il cliente arriva al bancone.
 
-Il locale sceglie dal pannello di gestione **come** funziona il ritiro:
+Il locale sceglie dal pannello di gestione **come** si chiude la consegna:
 
-| Modalità | Cosa vede il cliente | Cosa fa il barman |
-| --- | --- | --- |
-| **Scontrino con QR** (default) | scontrino con QR e codice | inquadra, controlla, preme OK — lo scontrino si archivia |
-| **Solo scontrino** | scontrino con il bollo «Pagato» | guarda e versa: niente app, niente scansione |
+| Modalità | Cosa vede il cliente | Cosa fa il barman | Uso singolo |
+| --- | --- | --- | --- |
+| **Sbarra sul telefono del cliente** (default) | scontrino con orologio vivo e un pulsante | guarda lo schermo e sbarra lì | sì |
+| **Scontrino con QR** | scontrino con QR e codice | inquadra dal proprio telefono e conferma | sì |
+| **Solo scontrino** | scontrino col bollo «Pagato» | guarda e versa, senza toccare niente | no |
 
-La prima protegge dal riutilizzo, la seconda si adotta in cinque minuti senza
-chiedere niente al personale.
+La prima non chiede niente al personale — nessuna app, nessun PIN — e protegge
+comunque dal riutilizzo. È il punto di equilibrio giusto per quasi tutti i
+locali.
 
 ---
 
 ## Come funziona
 
+Modalità di default, quella senza niente da installare al bancone:
+
 ```
-CLIENTE                                   BARMAN
-───────                                   ──────
-1. apre /  →  sceglie i drink
-2. paga (Apple Pay / Google Pay / carta)
-3. riceve lo scontrino /scontrino/CODICE
+1. il cliente apre /  →  sceglie le fasce (1 birra, 1 cocktail premium…)
+2. paga con Apple Pay / Google Pay / carta
+3. riceve lo scontrino su /scontrino/CODICE
    • numero grande della serata  #007
-   • QR + codice leggibile a voce
-                                          4. apre /bar/coda oppure /bar/ritiro
-                                          5. inquadra il QR o cerca il codice
-                                          6. vede cosa versare e preme OK
-7. lo scontrino diventa «Ritirato»  ←──── 7. l'ordine finisce in archivio
+   • cosa versare, in caratteri grandi
+   • un orologio che scorre
+4. al bancone porge il telefono
+5. il barman legge, versa, e tocca «Segna consegnato» (due volte, per sicurezza)
+6. lo scontrino si sbarra: numero barrato, ora della consegna, fine
 ```
 
-Lo scontrino del cliente si aggiorna da solo: nel momento in cui il barman
-conferma, sullo schermo compare «Ritirato» e il QR sparisce.
+Con la modalità QR il passo 5 avviene invece sul telefono del barman, che
+inquadra il codice dal suo dispositivo e vede anche la coda degli ordini pagati.
 
-### Perché non si può usare due volte (modalità con QR)
+### Perché non si può usare due volte
 
-* Il QR contiene un **token segreto** generato per quel singolo ordine: uno
-  screenshot di un altro scontrino non passa la verifica.
+* Lo stato vive **sul server**, non sul telefono: ricaricare la pagina, riaprire
+  il link o riavviare l'app non riporta indietro uno scontrino sbarrato.
 * La consegna è un `UPDATE ... WHERE status = 'paid'`: **una sola** riesce, anche
-  se due barman premono OK nello stesso istante da due telefoni diversi.
-  Al secondo compare «Scontrino già utilizzato».
-* Un QR che non corrisponde al codice viene segnalato come **possibile
-  contraffazione**, e il pulsante di consegna resta disabilitato.
+  con richieste in parallelo. Alla seconda compare «Scontrino già utilizzato».
+* Ogni ordine ha un **token segreto** proprio. Nella modalità QR viaggia dentro
+  il codice, in quella handoff resta nella pagina del cliente: in entrambi i
+  casi lo scontrino di un altro non passa la verifica.
+* Nella modalità handoff lo scontrino mostra un **orologio che scorre**. Uno
+  screenshot resta fermo all'ora dello scatto, e al barman basta un'occhiata per
+  accorgersene. Non è una barriera crittografica: è il trucco dei biglietti del
+  trasporto pubblico, e per un bar è sufficiente.
 
 ---
 
@@ -118,24 +127,26 @@ prezzo, categoria, ordine di apparizione e la spunta **«In menu stasera»** —
 corretto negli scontrini già pagati, perché nome e prezzo vengono **congelati**
 al momento dell'acquisto. Cambiare un prezzo non tocca nessun ordine esistente.
 
-**Modalità di ritiro.** Il selettore in cima decide fra le due modalità della
-tabella qui sopra. In «solo scontrino» il QR sparisce dallo scontrino, l'area
-barman viene disattivata e anche l'API di validazione risponde di no: non resta
-una porta di servizio aperta.
+**Modalità di ritiro.** Il selettore in cima sceglie fra le tre modalità della
+tabella qui sopra, con pro e contro scritti accanto a ognuna. Il cambio è
+immediato e non serve un rideploy. L'area barman esiste solo nella modalità QR:
+nelle altre due le pagine spariscono e anche le API di validazione rispondono di
+no, così non resta una porta di servizio aperta.
 
 > **Attenzione al PIN.** Se `ADMIN_PIN` non è configurato vale `STAFF_PIN`, cioè
 > ogni barman può cambiare i prezzi. Il pannello lo segnala in cima finché non
 > imposti due PIN distinti.
 
-Per ripartire dal listino di esempio: `npm run db:seed`.
+Per ripartire dal listino di esempio a fasce: `npm run db:seed`.
 
 ---
 
 ## Demo statica (per far vedere l'idea)
 
-`docs/index.html` è una pagina **finta e autonoma**: due telefoni affiancati,
-quello del cliente e quello del barman, e il giro completo — ordina, paga,
-scontrino, il barman timbra, prova a riusarlo e viene respinto.
+`docs/index.html` è una pagina **finta e autonoma** che mostra il giro completo
+sul telefono del cliente: sceglie le fasce, paga, riceve lo scontrino, il barman
+lo sbarra. Accanto scorre un commento che spiega cosa sta succedendo a ogni
+passo.
 
 Gira tutta nel browser: nessun server, nessun pagamento, nessun database. Serve
 a far capire l'idea al locale in trenta secondi, prima di mettere in piedi
@@ -263,7 +274,7 @@ prisma/seed.ts              listino di esempio
 src/lib/orders.ts           creazione ordine, pagamento, consegna monouso
 src/lib/payments.ts         PaymentIntent Stripe e riconoscimento wallet
 src/lib/session.ts          sessioni firmate per barman e gestione (cookie distinti)
-src/lib/settings.ts         modalità di ritiro, modificabile a caldo
+src/lib/settings.ts         modalità di consegna, modificabile a caldo
 src/lib/codes.ts            codici leggibili, token QR, giornata commerciale
 src/lib/qr.ts               generazione del QR come SVG
 
@@ -275,6 +286,7 @@ src/app/bar/coda/page.tsx            coda live del bancone
 src/app/bar/ritiro/page.tsx          scanner QR e conferma consegna
 src/app/admin/page.tsx               gestione menu, prezzi e modalità
 src/app/admin/actions.ts             server action del pannello
+src/app/api/orders/[code]/consegna   consegna sbarrata dal telefono del cliente
 src/app/api/…                        API di ordini, staff, health e webhook Stripe
 
 docs/index.html             demo statica autonoma, per GitHub Pages
@@ -309,8 +321,10 @@ railway.json                build da Dockerfile, healthcheck, replica singola
 Punti da concordare con il locale, non ancora coperti dal codice:
 
 * **In modalità «solo scontrino» non c'è alcuna protezione dal riutilizzo**: è
-  una scelta consapevole di semplicità, non una dimenticanza. Se il locale ha
-  volumi alti conviene la modalità con QR.
+  una scelta consapevole di semplicità, non una dimenticanza.
+* Nella modalità handoff il telefono passa di mano a ogni consegna. Funziona, ed
+  è quello che già succede coi buoni di carta, ma se al locale non piace far
+  toccare i telefoni dei clienti la modalità QR evita il problema.
 * **Rimborsi e annullamenti** dal pannello staff (oggi si passa da Stripe; il
   webhook `charge.refunded` marca già l'ordine come rimborsato).
 * **Verifica dell'età**: la spunta «ho 18 anni» è dichiarativa. Se servono

@@ -65,12 +65,17 @@ export default async function ReceiptPage({
         )
       : null;
 
+  // Il token esce dal server solo dove serve davvero a qualcosa.
+  const handoffToken =
+    mode === "handoff" && order.status === "paid" ? order.redeemToken : null;
+
   return (
     <ReceiptClient
       order={toDTO(order)}
       qrSvg={qrSvg}
       venueName={VENUE_NAME}
       mode={mode}
+      handoffToken={handoffToken}
     />
   );
 }

@@ -13,23 +13,33 @@ const MODES: {
   points: string[];
 }[] = [
   {
+    value: "handoff",
+    title: "Il barman sbarra sul telefono del cliente",
+    summary: "Niente app per lo staff, niente da installare.",
+    points: [
+      "Il cliente porge il telefono, il barman vede cosa versare e sbarra lì",
+      "Lo scontrino sbarrato non torna più valido, nemmeno ricaricando",
+      "Nessun PIN da digitare a ogni consegna: è il punto, la fila deve sparire",
+    ],
+  },
+  {
     value: "qr",
     title: "Scontrino con QR",
-    summary: "Il barman valida e archivia ogni scontrino.",
+    summary: "Il barman ha il suo telefono e valida gli ordini.",
     points: [
       "Il cliente mostra un QR, il barman lo inquadra e preme OK",
-      "Ogni scontrino vale una volta sola: il secondo tentativo viene respinto",
       "Il bancone ha la coda live degli ordini da preparare",
+      "Il controllo più stretto: lo scontrino non lascia mai le mani del cliente",
     ],
   },
   {
     value: "receipt",
     title: "Solo scontrino",
-    summary: "Nessun QR, nessuna app per il barman.",
+    summary: "Il barman guarda e versa, senza toccare niente.",
     points: [
-      "Il cliente mostra lo scontrino e il barman versa: niente da installare",
+      "Il più semplice in assoluto: nessun gesto in più al bancone",
       "Nessun controllo sul riutilizzo — lo stesso scontrino può essere rimostrato",
-      "L'area barman viene disattivata",
+      "Ha senso solo con poco volume, o con una fiducia alta",
     ],
   },
 ];
@@ -42,7 +52,7 @@ export default function AdminModeSettings({ mode }: { mode: ReceiptMode }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="flex flex-col gap-3">
         {MODES.map((option) => (
           <label
             key={option.value}

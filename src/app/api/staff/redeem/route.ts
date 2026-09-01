@@ -17,7 +17,7 @@ const MESSAGES: Record<string, string> = {
 export async function POST(request: Request) {
   if (await isStaffAreaDisabled()) {
     return NextResponse.json(
-      { error: "Modalità solo scontrino attiva: la validazione è disattivata." },
+      { error: "La validazione dal telefono del barman non è attiva in questa modalità." },
       { status: 409 },
     );
   }

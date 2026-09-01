@@ -1,19 +1,21 @@
 import { prisma } from "./db";
 
 /**
- * Come viene consegnato l'ordine al bancone.
+ * Come lo scontrino viene "bruciato" al bancone. Le tre modalità sono in
+ * ordine di attrito decrescente per il locale.
  *
- * - `qr`      → lo scontrino porta un QR, il barman lo valida e l'ordine
- *               viene archiviato come consegnato (uso singolo garantito).
- * - `receipt` → lo scontrino è solo da mostrare: niente QR, niente
- *               validazione, niente area barman. Più semplice da adottare,
- *               ma nessuna protezione contro un secondo utilizzo.
+ * - `qr`      → il barman ha il suo telefono: inquadra il QR, controlla e
+ *               conferma. Uso singolo garantito, e il bancone ha la coda.
+ * - `handoff` → il cliente porge il telefono, il barman guarda cosa ha
+ *               ordinato e sbarra lì, sul telefono del cliente. Niente app
+ *               per lo staff, niente PIN, niente da installare.
+ * - `receipt` → il cliente mostra e basta. Nessuna validazione.
  */
-export const RECEIPT_MODES = ["qr", "receipt"] as const;
+export const RECEIPT_MODES = ["qr", "handoff", "receipt"] as const;
 export type ReceiptMode = (typeof RECEIPT_MODES)[number];
 
 export const RECEIPT_MODE_KEY = "receiptMode";
-export const DEFAULT_RECEIPT_MODE: ReceiptMode = "qr";
+export const DEFAULT_RECEIPT_MODE: ReceiptMode = "handoff";
 
 export function isReceiptMode(value: unknown): value is ReceiptMode {
   return RECEIPT_MODES.includes(value as ReceiptMode);
@@ -35,7 +37,10 @@ export async function setReceiptMode(mode: ReceiptMode): Promise<void> {
   });
 }
 
-/** Vero quando l'area barman è disattivata dalla modalità corrente. */
+/**
+ * L'area barman (coda, scanner, PIN) serve solo alla modalità con QR:
+ * nelle altre due il bancone non ha niente da aprire.
+ */
 export async function isStaffAreaDisabled(): Promise<boolean> {
-  return (await getReceiptMode()) === "receipt";
+  return (await getReceiptMode()) !== "qr";
 }

@@ -144,7 +144,9 @@ export default function MenuClient({
           Scegli i tuoi drink, paga dal telefono e salta la fila.{" "}
           {mode === "qr"
             ? "Al bancone mostri il QR, il barman lo timbra e via."
-            : "Al bancone mostri lo scontrino e ritiri."}
+            : mode === "handoff"
+              ? "Al bancone mostri lo scontrino, il barman lo sbarra e via."
+              : "Al bancone mostri lo scontrino e ritiri."}
         </p>
         {demo && (
           <p className="mt-3 rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">

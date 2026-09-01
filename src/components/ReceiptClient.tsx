@@ -15,11 +15,14 @@ export default function ReceiptClient({
   qrSvg,
   venueName,
   mode,
+  handoffToken,
 }: {
   order: OrderDTO;
   qrSvg: string | null;
   venueName: string;
   mode: ReceiptMode;
+  /** Presente solo in modalità handoff: autorizza la consegna da questa pagina. */
+  handoffToken: string | null;
 }) {
   const router = useRouter();
   const [polled, setPolled] = useState<OrderDTO | null>(null);
@@ -36,9 +39,10 @@ export default function ReceiptClient({
   // stesso istante in cui il barman preme il pulsante.
   useEffect(() => {
     if (order.status === "served" || order.status === "cancelled") return;
-    // In modalità solo scontrino, dopo il pagamento non cambia più nulla:
-    // tenere aperto il polling scaricherebbe solo la batteria.
-    if (mode === "receipt" && order.status === "paid") return;
+    // Il polling serve solo quando la consegna può arrivare da un altro
+    // dispositivo, cioè dal telefono del barman. Nelle altre modalità
+    // scaricherebbe la batteria per niente.
+    if (mode !== "qr" && order.status === "paid") return;
 
     let cancelled = false;
     const interval = setInterval(async () => {
@@ -152,6 +156,14 @@ export default function ReceiptClient({
 
           {isPaid && mode === "receipt" && <PaidSeal code={order.code} />}
 
+          {isPaid && mode === "handoff" && handoffToken && (
+            <HandoffPanel
+              code={order.code}
+              token={handoffToken}
+              onServed={(served) => setPolled(served)}
+            />
+          )}
+
           {isPaid && mode === "qr" && qrSvg && (
             <div className="flex flex-col items-center gap-4">
               <p className="text-center text-sm font-semibold">
@@ -211,6 +223,112 @@ export default function ReceiptClient({
   );
 }
 
+/**
+ * Modalità handoff: il cliente porge il telefono, il barman guarda cosa deve
+ * versare e sbarra lì. Nessun login: chiederne uno a ogni consegna
+ * rimetterebbe in piedi la fila che vogliamo togliere.
+ */
+function HandoffPanel({
+  code,
+  token,
+  onServed,
+}: {
+  code: string;
+  token: string;
+  onServed: (order: OrderDTO) => void;
+}) {
+  const [armed, setArmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Due tocchi: sul telefono di un cliente un tap per sbaglio brucerebbe
+  // il suo drink, e non ci sarebbe modo di tornare indietro.
+  useEffect(() => {
+    if (!armed) return;
+    const timeout = setTimeout(() => setArmed(false), 5000);
+    return () => clearTimeout(timeout);
+  }, [armed]);
+
+  async function confirm() {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/orders/${code}/consegna`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error ?? "Operazione non riuscita.");
+      onServed(data.order as OrderDTO);
+      if (navigator.vibrate) navigator.vibrate(40);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Riprova.");
+      setBusy(false);
+      setArmed(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <LiveClock />
+      <p className="text-center text-sm text-muted">
+        Mostra lo schermo al barman: prepara e sbarra lo scontrino qui.
+      </p>
+
+      {error && (
+        <p className="w-full rounded-xl border border-danger/50 bg-danger/10 px-3 py-2 text-center text-sm text-danger">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={() => (armed ? confirm() : setArmed(true))}
+        disabled={busy}
+        className={`w-full text-lg ${armed ? "btn-primary" : "btn-lime"}`}
+      >
+        {busy
+          ? "…"
+          : armed
+            ? "Tocca ancora: non si torna indietro"
+            : "Barman: segna consegnato"}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Orologio vivo. Uno screenshot dello scontrino resta fermo all'ora in cui
+ * è stato scattato: al barman basta un'occhiata per accorgersene.
+ */
+function LiveClock() {
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    // Parte dopo l'idratazione: l'ora del server non è quella del telefono.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNow(new Date());
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <p
+      className="font-mono text-4xl font-black tabular-nums"
+      aria-label="Ora corrente"
+    >
+      {now
+        ? now.toLocaleTimeString("it-IT", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+        : "--:--:--"}
+    </p>
+  );
+}
+
 /** Ordine di avanzamento degli stati, dal più fresco al definitivo. */
 function statusRank(status: OrderDTO["status"]): number {
   switch (status) {
@@ -257,9 +375,9 @@ function StatusBanner({
     },
     paid: {
       text:
-        mode === "qr"
-          ? "Pagato · pronto da ritirare"
-          : "Pagato · mostra lo scontrino al bancone",
+        mode === "receipt"
+          ? "Pagato · mostra lo scontrino al bancone"
+          : "Pagato · pronto da ritirare",
       className: "border-lime/50 bg-lime/10 text-lime",
     },
     served: {
