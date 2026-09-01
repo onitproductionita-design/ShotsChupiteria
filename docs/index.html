@@ -400,6 +400,59 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .note p { margin: 0 0 8px; }
 .note b { color: var(--ink); font-weight: 600; }
 
+.custom {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #14101fcc;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.custom h2 { margin: 0; font-size: 1.1rem; font-weight: 900; letter-spacing: -0.01em; }
+.custom .rows { display: flex; flex-direction: column; gap: 10px; }
+.custom .row-edit { display: flex; gap: 10px; align-items: center; }
+@media (max-width: 560px) { .custom .row-edit { flex-wrap: wrap; } }
+
+.field {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--ink);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 16px;
+}
+.field:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.field.price {
+  flex: 0 0 110px;
+  font-family: "Geist Mono", ui-monospace, monospace;
+  text-align: right;
+}
+
+.field-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.ghost-link {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 9px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.ghost-link:hover { border-color: var(--accent); }
+
 .reset {
   align-self: flex-start;
   padding: 10px 18px;
@@ -430,7 +483,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       telefono. Il barman legge cosa versare e <strong>sbarra lì lo
       scontrino</strong>: niente app da installare, niente da scansionare.
     </p>
+    <button class="ghost-link" type="button" id="toggle-custom">
+      Mettici il tuo locale e i tuoi prezzi
+    </button>
   </header>
+
+  <section class="custom" id="custom" hidden></section>
 
   <main class="stage">
     <section class="pane">
@@ -475,8 +533,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 <script>
 "use strict";
 
+const VENUE_DEFAULT = "Shots Chupitería";
+const CONFIG_KEY = "sc_demo_config_v1";
+
 /* Listino a fasce: si paga la categoria, il drink preciso si dice al bancone. */
-const MENU = [
+const DEFAULT_MENU = [
   { id: "shot", emoji: "🥃", name: "Shot", desc: "Un chupito a scelta dal muro", price: 300, group: "Da bere" },
   { id: "birra", emoji: "🍺", name: "Birra", desc: "Spina o bottiglia, 0,4 l", price: 500, group: "Da bere" },
   { id: "cocktail", emoji: "🍹", name: "Cocktail", desc: "Mojito, spritz, gin tonic…", price: 700, group: "Da bere" },
@@ -484,6 +545,46 @@ const MENU = [
   { id: "analcolico", emoji: "🍋", name: "Analcolico", desc: "Virgin cocktail, bibita, energy", price: 400, group: "Senza alcol" },
   { id: "acqua", emoji: "💧", name: "Acqua", desc: "Naturale o frizzante, 50 cl", price: 150, group: "Senza alcol" }
 ];
+
+/**
+ * Il proprietario può metterci il nome del suo locale e i suoi prezzi:
+ * vedere la propria insegna e il proprio listino convince più di mille
+ * spiegazioni. Resta nel suo browser, non lo vede nessun altro.
+ */
+const config = {
+  venue: VENUE_DEFAULT,
+  items: DEFAULT_MENU.map((item) => ({ ...item }))
+};
+
+function loadConfig() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CONFIG_KEY) || "null");
+    if (!saved) return;
+    config.venue = String(saved.venue || VENUE_DEFAULT).slice(0, 40);
+    config.items = DEFAULT_MENU.map((item) => {
+      const stored = (saved.items || []).find((row) => row.id === item.id);
+      if (!stored) return { ...item };
+      return {
+        ...item,
+        name: String(stored.name || item.name).slice(0, 40),
+        price: Number.isFinite(stored.price) && stored.price > 0 ? stored.price : item.price
+      };
+    });
+  } catch {
+    // Navigazione privata o storage pieno: si resta sui valori di esempio.
+  }
+}
+
+function saveConfig() {
+  try {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify({
+      venue: config.venue,
+      items: config.items.map(({ id, name, price }) => ({ id, name, price }))
+    }));
+  } catch {
+    // idem: la personalizzazione vale solo per questa visita.
+  }
+}
 
 const STEPS = [
   {
@@ -527,7 +628,7 @@ function reset() {
 }
 
 const lines = () =>
-  MENU.filter((item) => state.cart[item.id] > 0)
+  config.items.filter((item) => state.cart[item.id] > 0)
     .map((item) => ({ ...item, qty: state.cart[item.id] }));
 
 const total = () => lines().reduce((sum, line) => sum + line.price * line.qty, 0);
@@ -538,7 +639,7 @@ const count = () => lines().reduce((sum, line) => sum + line.qty, 0);
 function menuHtml() {
   let html = "";
   let group = null;
-  for (const item of MENU) {
+  for (const item of config.items) {
     if (item.group !== group) {
       group = item.group;
       html += `<div class="group-label">${escape(group)}</div>`;
@@ -571,7 +672,7 @@ function menuHtml() {
   </div>`;
 
   return `<div class="screen-head">
-      <div class="venue">Shots Chupitería</div>
+      <div class="venue">${escape(config.venue)}</div>
       <div class="title">Ordina e salta la fila</div>
       <div class="sub">Paghi qui, il drink preciso lo dici al bancone.</div>
     </div>
@@ -638,7 +739,7 @@ function receiptHtml() {
     <div class="receipt">
       <div class="tear"></div>
       <div class="receipt-body center">
-        <div style="font-size:0.68rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);font-weight:700">Shots Chupitería</div>
+        <div style="font-size:0.68rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);font-weight:700">${escape(config.venue)}</div>
         <div class="muted" style="margin-top:12px;letter-spacing:0.14em;text-transform:uppercase;font-size:0.68rem">Numero ordine</div>
         <div class="ticket-num${served ? " spent" : ""}">#${String(order.number).padStart(3, "0")}</div>
         <div style="font-weight:700;font-size:1.05rem;margin-top:6px">${escape(order.name)}</div>
@@ -656,6 +757,44 @@ function receiptHtml() {
 
 const screenEl = document.getElementById("screen");
 const stepsEl = document.getElementById("steps");
+const customEl = document.getElementById("custom");
+
+/** Da "7,50" o "7.5" a centesimi; null se non è un importo sensato. */
+function parseEuro(input) {
+  const normalized = String(input).trim().replace(",", ".").replace(/[€\s]/g, "");
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
+  const cents = Math.round(Number(normalized) * 100);
+  return cents > 0 && cents <= 100000 ? cents : null;
+}
+
+function renderCustom() {
+  customEl.innerHTML = `<h2>Il tuo locale</h2>
+    <p class="muted" style="margin:0">
+      Cambia nome e prezzi: il menu qui accanto si aggiorna subito, e resta così
+      anche se riapri il link. Vale solo sul tuo telefono.
+    </p>
+    <div>
+      <label class="field-label" for="venue-name">Nome del locale</label>
+      <input class="field" id="venue-name" maxlength="40" value="${escape(config.venue)}">
+    </div>
+    <div>
+      <span class="field-label">Fasce e prezzi</span>
+      <div class="rows">
+        ${config.items.map((item) => `
+          <div class="row-edit">
+            <span aria-hidden="true" style="font-size:1.4rem">${item.emoji}</span>
+            <input class="field" data-name="${item.id}" maxlength="40"
+              aria-label="Nome della fascia" value="${escape(item.name)}">
+            <input class="field price" data-price="${item.id}" inputmode="decimal"
+              aria-label="Prezzo di ${escape(item.name)}" value="${(item.price / 100).toFixed(2).replace(".", ",")}">
+          </div>`).join("")}
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-accent" style="width:auto" type="button" data-custom="close">Fatto</button>
+      <button class="reset" type="button" data-custom="restore">Rimetti i valori di esempio</button>
+    </div>`;
+}
 
 function currentStep() {
   if (state.view === "menu") return "menu";
@@ -692,6 +831,28 @@ function render() {
     clockTimer = setInterval(tick, 1000);
   }
 }
+
+customEl.addEventListener("input", (event) => {
+  const target = event.target;
+
+  if (target.id === "venue-name") {
+    config.venue = target.value.slice(0, 40) || VENUE_DEFAULT;
+  } else if (target.dataset.name) {
+    const item = config.items.find((row) => row.id === target.dataset.name);
+    if (item) item.name = target.value.slice(0, 40) || item.name;
+  } else if (target.dataset.price) {
+    const cents = parseEuro(target.value);
+    const item = config.items.find((row) => row.id === target.dataset.price);
+    // Mentre si digita "7," il valore non è ancora valido: si tiene il
+    // prezzo di prima invece di far lampeggiare un errore.
+    if (item && cents !== null) item.price = cents;
+  } else {
+    return;
+  }
+
+  saveConfig();
+  render();
+});
 
 document.addEventListener("click", (event) => {
   const target = event.target.closest("button");
@@ -750,9 +911,32 @@ document.addEventListener("click", (event) => {
     return render();
   }
 
+  if (target.dataset.custom === "close") {
+    customEl.hidden = true;
+    return;
+  }
+
+  if (target.dataset.custom === "restore") {
+    config.venue = VENUE_DEFAULT;
+    config.items = DEFAULT_MENU.map((item) => ({ ...item }));
+    saveConfig();
+    renderCustom();
+    return render();
+  }
+
+  if (target.id === "toggle-custom") {
+    customEl.hidden = !customEl.hidden;
+    if (!customEl.hidden) {
+      renderCustom();
+      customEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    return;
+  }
+
   if (target.id === "reset") reset();
 });
 
+loadConfig();
 reset();
 </script>
 </body>

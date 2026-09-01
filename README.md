@@ -148,6 +148,12 @@ sul telefono del cliente: sceglie le fasce, paga, riceve lo scontrino, il barman
 lo sbarra. Accanto scorre un commento che spiega cosa sta succedendo a ogni
 passo.
 
+C'è anche un pannello **«Mettici il tuo locale e i tuoi prezzi»**: chi apre il
+link può cambiare insegna, nomi delle fasce e importi, e vedere il proprio
+listino sul telefono. Resta salvato nel suo browser, quindi riaprendo il link
+ritrova la sua versione. È il modo più veloce per far dire «ah, ma allora è il
+mio bar» a chi deve decidere.
+
 Gira tutta nel browser: nessun server, nessun pagamento, nessun database. Serve
 a far capire l'idea al locale in trenta secondi, prima di mettere in piedi
 qualsiasi cosa.
